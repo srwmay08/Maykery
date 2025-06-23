@@ -157,15 +157,15 @@
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyB9odsDqgpAu7b5MlM4KrwskQZa7d09UF0",
-  authDomain: "themaykery-5646c.firebaseapp.com",
-  projectId: "themaykery-5646c",
-  storageBucket: "themaykery-5646c.firebasestorage.app",
-  messagingSenderId: "498101134715",
-  appId: "1:498101134715:web:2a40a239f13e376b1a89de",
-  measurementId: "G-VCQVVK7997"
-};
+    const firebaseConfig = {
+    apiKey: "AIzaSyB9odsDqgpAu7b5MlM4KrwskQZa7d09UF0",
+    authDomain: "themaykery-5646c.firebaseapp.com",
+    projectId: "themaykery-5646c",
+    storageBucket: "themaykery-5646c.firebasestorage.app",
+    messagingSenderId: "498101134715",
+    appId: "1:498101134715:web:2a40a239f13e376b1a89de",
+    measurementId: "G-VCQVVK7997"
+    };
  
     // --- INITIALIZATION ---
     const app = initializeApp(firebaseConfig);
@@ -198,11 +198,10 @@ const firebaseConfig = {
     // ... (keep your existing auth functions as is)
 
     // --- FIRESTORE REFERENCES ---
-    const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
-    const inventoryRef = doc(db, 'artifacts', appId, 'public', 'data', 'inventory', 'counts');
-    const ordersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
-    const pickupSlotsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'pickupSlots');
-
+    const configRef = doc(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'config', 'settings');
+    const inventoryRef = doc(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'inventory', 'counts');
+    const ordersCollectionRef = collection(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'orders');
+    const pickupSlotsCollectionRef = collection(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'pickupSlots');
     // --- APPLICATION LOGIC ---
     async function initializeApplication() {
         if (!isAuthReady) { return; }
