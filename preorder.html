@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bakery Weekly Pre-Order</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for disabled state */
+        .disabled-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg my-10">
+        
+        <div id="loading-spinner" class="text-center">
+            <svg class="animate-spin h-8 w-8 text-gray-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-gray-500">Loading Bakery Inventory...</p>
+        </div>
+
+        <div id="app-content" class="hidden">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Weekly Bread Pre-Order</h1>
+                <p class="text-gray-500 mt-2">Place your order for the upcoming week. Pickups are on Saturday.</p>
+                <div id="status-banner" class="mt-4 p-3 rounded-md text-white font-semibold"></div>
+            </div>
+
+            <form id="preorder-form" class="relative">
+                <div id="closed-overlay" class="hidden disabled-overlay">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Ordering is Closed</h2>
+                        <p class="text-gray-600">Please check back next week!</p>
+                    </div>
+                </div>
+                
+                <!-- Customer Info -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Your Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="customer-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                            <input type="text" id="customer-name" name="customer-name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="customer-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                            <input type="email" id="customer-email" name="customer-email" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                         <div class="md:col-span-2">
+                            <label for="customer-phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                            <input type="tel" id="customer-phone" name="customer-phone" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submarine Rolls -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Submarine Rolls</h2>
+                    <div class="flex items-center justify-between">
+                        <label for="submarine-rolls" class="text-gray-600">Submarine Rolls</label>
+                        <input type="number" id="submarine-rolls" name="submarine-rolls" min="0" class="w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div id="submarine-stock-message" class="text-right text-red-500 font-semibold mt-1 hidden">0 Rolls Remaining</div>
+                </div>
+
+                <!-- Sandwich Loaves -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between border-b pb-2 mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Sandwich Loaves</h2>
+                         <div id="sandwich-stock-message" class="text-lg font-bold text-red-500 hidden">0 Loaves Remaining</div>
+                    </div>
+                    <div class="space-y-4" id="sandwich-loaves-container">
+                        <!-- Flavors will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- Submission -->
+                <div class="mt-8">
+                    <button type="submit" id="submit-order" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300 disabled:bg-gray-400">
+                        Submit & Proceed to Payment
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Admin Section -->
+            <div class="mt-12 border-t pt-6 text-center">
+                 <p class="text-xs text-gray-500">Admin Only</p>
+                 <button id="admin-toggle" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Toggle Ordering Status</button>
+            </div>
+             <!-- User ID display -->
+            <div class="mt-4 text-center text-xs text-gray-400">
+                User ID: <span id="user-id-display"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Message Modal -->
+    <div id="message-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-20">
+      <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
+        <h3 id="modal-title" class="text-2xl font-bold text-gray-800"></h3>
+        <p id="modal-message" class="mt-4 text-gray-600"></p>
+        <div class="mt-6 text-right">
+          <button id="modal-close" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Password Modal -->
+    <div id="admin-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-20">
+      <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm mx-auto">
+        <h3 class="text-xl font-bold text-gray-800">Admin Access</h3>
+        <p class="mt-2 text-gray-600">Enter the password to toggle ordering status.</p>
+        <div class="mt-4">
+            <input type="password" id="admin-password-input" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Password">
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button id="admin-cancel" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancel</button>
+          <button id="admin-submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Submit</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, runTransaction, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- CONFIGURATION ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'themaykery-preorder-app';
+        
+        // --- INITIALIZATION ---
+        setLogLevel('debug');
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let userId = null;
+        let isAuthReady = false;
+
+        // --- ELEMENTS ---
+        const submarineInput = document.getElementById('submarine-rolls');
+        const submarineStockMessage = document.getElementById('submarine-stock-message');
+        const sandwichLoavesContainer = document.getElementById('sandwich-loaves-container');
+        const sandwichStockMessage = document.getElementById('sandwich-stock-message');
+        const form = document.getElementById('preorder-form');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const appContent = document.getElementById('app-content');
+        const closedOverlay = document.getElementById('closed-overlay');
+        const statusBanner = document.getElementById('status-banner');
+        const adminToggleButton = document.getElementById('admin-toggle');
+        const userIdDisplay = document.getElementById('user-id-display');
+        
+        // Modal Elements
+        const messageModal = document.getElementById('message-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCloseBtn = document.getElementById('modal-close');
+        
+        const adminModal = document.getElementById('admin-modal');
+        const adminPasswordInput = document.getElementById('admin-password-input');
+        const adminCancelBtn = document.getElementById('admin-cancel');
+        const adminSubmitBtn = document.getElementById('admin-submit');
+
+        // --- STATE ---
+        let currentMaxSubmarine = 32;
+        let currentMaxSandwich = 36;
+        const SANDWICH_FLAVORS = [
+            { id: 'plain', name: 'Plain' }, { id: 'herbes-cheddar', name: 'Herbes & Cheddar' },
+            { id: 'sriracha-cheddar', name: 'Sriracha & Cheddar' }, { id: 'cinnamon-marble', name: 'Cinnamon Marble' },
+            { id: 'rosemary-garlic', name: 'Rosemary & Garlic' },
+        ];
+        let sandwichInputs = {};
+        
+        // --- HELPER FUNCTIONS ---
+        function showModal(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            messageModal.classList.remove('hidden');
+        }
+        modalCloseBtn.addEventListener('click', () => messageModal.classList.add('hidden'));
+
+        function createSandwichFlavorInput(flavor) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between';
+            div.innerHTML = `
+                <label for="${flavor.id}" class="text-gray-600">${flavor.name}</label>
+                <input type="number" id="${flavor.id}" name="${flavor.id}" min="0" class="sandwich-loaf-input w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            `;
+            sandwichLoavesContainer.appendChild(div);
+            return div.querySelector('input');
+        }
+
+        // --- AUTHENTICATION ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = userId;
+                isAuthReady = true;
+                initializeApplication();
+            } else { isAuthReady = false; userId = null; }
+        });
+        
+        async function setupAuth() {
+            try {
+                await setPersistence(auth, inMemoryPersistence);
+                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) { console.error("Authentication Error:", error); showModal("Authentication Error", "Could not connect. Please refresh."); }
+        }
+
+        // --- FIRESTORE REFERENCES ---
+        const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+        const inventoryRef = doc(db, 'artifacts', appId, 'public', 'data', 'inventory', 'counts');
+        const ordersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+
+        // --- APPLICATION LOGIC ---
+        async function initializeApplication() {
+            if (!isAuthReady) { return; }
+            
+            SANDWICH_FLAVORS.forEach(flavor => {
+                const inputEl = createSandwichFlavorInput(flavor);
+                sandwichInputs[flavor.id] = inputEl;
+                inputEl.addEventListener('input', checkSandwichStock);
+            });
+            submarineInput.addEventListener('input', checkSubmarineStock);
+
+            await checkAndCreateInitialData();
+            setupListeners();
+            loadingSpinner.classList.add('hidden');
+            appContent.classList.remove('hidden');
+        }
+
+        async function checkAndCreateInitialData() {
+            try {
+                const configDoc = await getDoc(configRef);
+                if (!configDoc.exists()) {
+                    await setDoc(configRef, { isOpen: true });
+                }
+                const inventoryDoc = await getDoc(inventoryRef);
+                if (!inventoryDoc.exists()) {
+                    await setDoc(inventoryRef, { submarineRolls: 32, sandwichLoaves: 36 });
+                }
+            } catch(error) {
+                console.error("Error creating initial data:", error);
+                showModal("Setup Error", "Failed to initialize bakery data.");
+            }
+        }
+        
+        function checkSubmarineStock(event) {
+            const requested = parseInt(event.target.value, 10) || 0;
+            if (requested > currentMaxSubmarine) {
+                event.target.value = currentMaxSubmarine;
+                submarineStockMessage.classList.remove('hidden');
+            } else {
+                submarineStockMessage.classList.add('hidden');
+            }
+        }
+
+        function checkSandwichStock(event) {
+            const totalOrdered = Object.values(sandwichInputs).reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
+            
+            if (totalOrdered > currentMaxSandwich) {
+                const overage = totalOrdered - currentMaxSandwich;
+                event.target.value = Math.max(0, parseInt(event.target.value) - overage);
+                sandwichStockMessage.classList.remove('hidden');
+            } else {
+                 sandwichStockMessage.classList.add('hidden');
+            }
+        }
+
+        function setupListeners() {
+            onSnapshot(configRef, (doc) => {
+                if(doc.exists()) updateOrderingStatusUI(doc.data().isOpen);
+            }, (error) => { console.error("Error listening to config:", error); showModal("Connection Error", "Could not get ordering status."); });
+
+            onSnapshot(inventoryRef, (doc) => {
+                if(doc.exists()) {
+                    const data = doc.data();
+                    currentMaxSubmarine = data.submarineRolls;
+                    currentMaxSandwich = data.sandwichLoaves;
+                    submarineStockMessage.textContent = `${currentMaxSubmarine} Rolls Remaining`;
+                    sandwichStockMessage.textContent = `${currentMaxSandwich} Loaves Remaining`;
+                }
+            }, (error) => { console.error("Error listening to inventory:", error); showModal("Connection Error", "Could not get inventory updates."); });
+            
+            form.addEventListener('submit', handleFormSubmit);
+            adminToggleButton.addEventListener('click', () => adminModal.classList.remove('hidden'));
+            adminCancelBtn.addEventListener('click', () => adminModal.classList.add('hidden'));
+            adminSubmitBtn.addEventListener('click', handleAdminToggle);
+        }
+
+        function updateOrderingStatusUI(isOpen) {
+            const submitButton = document.getElementById('submit-order');
+            const inputs = form.querySelectorAll('input');
+            if (isOpen && (currentMaxSandwich > 0 || currentMaxSubmarine > 0)) {
+                statusBanner.textContent = "Ordering is Open!";
+                statusBanner.className = "mt-4 p-3 rounded-md text-white font-semibold bg-green-500";
+                closedOverlay.classList.add('hidden');
+                submitButton.disabled = false;
+                inputs.forEach(i => i.disabled = false);
+            } else {
+                statusBanner.textContent = "Ordering is currently Closed.";
+                statusBanner.className = "mt-4 p-3 rounded-md text-white font-semibold bg-red-500";
+                closedOverlay.classList.remove('hidden');
+                submitButton.disabled = true;
+                inputs.forEach(i => i.disabled = true);
+            }
+        }
+        
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+
+            const formData = new FormData(form);
+            const order = {
+                customerName: formData.get('customer-name'),
+                customerEmail: formData.get('customer-email'),
+                customerPhone: formData.get('customer-phone'),
+                items: {},
+                createdAt: serverTimestamp(),
+                userId: userId
+            };
+            
+            const subsOrdered = parseInt(formData.get('submarine-rolls'), 10) || 0;
+            if (subsOrdered > 0) order.items['submarine-rolls'] = subsOrdered;
+
+            let sandwichLoavesOrdered = 0;
+            SANDWICH_FLAVORS.forEach(flavor => {
+                const quantity = parseInt(formData.get(flavor.id), 10) || 0;
+                if (quantity > 0) {
+                    order.items[flavor.id] = quantity;
+                    sandwichLoavesOrdered += quantity;
+                }
+            });
+
+            if (!order.customerName || !order.customerEmail || !order.customerPhone) {
+                showModal("Missing Information", "Please provide your name, email, and phone number.");
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit & Proceed to Payment';
+                return;
+            }
+
+            if (Object.keys(order.items).length === 0) {
+                showModal("Empty Order", "Please select at least one item.");
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit & Proceed to Payment';
+                return;
+            }
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const inventoryDoc = await transaction.get(inventoryRef);
+                    if (!inventoryDoc.exists()) throw "Inventory document does not exist!";
+                    
+                    const inv = inventoryDoc.data();
+                    if (subsOrdered > inv.submarineRolls || sandwichLoavesOrdered > inv.sandwichLoaves) {
+                        throw "Not enough items in stock. The inventory may have updated. Please refresh.";
+                    }
+                    
+                    transaction.update(inventoryRef, {
+                        submarineRolls: inv.submarineRolls - subsOrdered,
+                        sandwichLoaves: inv.sandwichLoaves - sandwichLoavesOrdered
+                    });
+                    transaction.set(doc(ordersCollectionRef), order);
+                });
+                
+                showModal("Order Received!", `Thank you, ${order.customerName}! Your order is confirmed. This is where you would be redirected to Square for payment.`);
+                form.reset();
+                submarineStockMessage.classList.add('hidden');
+                sandwichStockMessage.classList.add('hidden');
+            } catch (error) {
+                console.error("Order submission failed: ", error);
+                showModal("Order Failed", `Error: ${error.toString()}`);
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit & Proceed to Payment';
+            }
+        }
+        
+        async function handleAdminToggle() {
+            const password = adminPasswordInput.value;
+            adminPasswordInput.value = ''; // Clear password
+            adminModal.classList.add('hidden');
+
+            if (password === "bakeryadmin") {
+                try {
+                     await runTransaction(db, async (transaction) => {
+                        const doc = await transaction.get(configRef);
+                        if (!doc.exists()) throw "Config doesn't exist!";
+                        transaction.update(configRef, { isOpen: !doc.data().isOpen });
+                     });
+                     showModal("Success", "Ordering status has been updated.");
+                } catch(error) {
+                    console.error("Failed to toggle status:", error);
+                    showModal("Error", "Could not update the ordering status.");
+                }
+            } else {
+                showModal("Access Denied", "Incorrect password.");
+            }
+        }
+        
+        // --- STARTUP ---
+        setupAuth();
+    </script>
+</body>
+</html>
