@@ -41,7 +41,7 @@
         <div id="app-content" class="hidden">
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Weekly Bread Pre-Order</h1>
-                <p class="text-gray-500 mt-2">Place your order for the upcoming week. Pickups are on Saturday.</p>
+<p class="text-gray-500 mt-2">Place your order for the upcoming week. Pickups are on Thursday & Friday.</p>
                 <div id="status-banner" class="mt-4 p-3 rounded-md text-white font-semibold"></div>
             </div>
 
@@ -73,7 +73,7 @@
 
                 <div class="mb-6">
                     <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Select a Pickup Time</h2>
-                    <p class="text-gray-500 mb-3">Pickups are on Saturdays. Please select an available time slot below.</p>
+<p class="text-gray-500 mb-3">Please select an available time slot below.</p>
                     <div id="pickup-slots-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         </div>
                     <input type="hidden" id="selected-pickup-slot" name="selected-pickup-slot" required>
@@ -300,27 +300,41 @@ const firebaseConfig = {
             pickupSlotError.classList.add('hidden');
         }
 
-        async function checkAndCreateInitialData() {
-            try {
-                const configDoc = await getDoc(configRef);
-                if (!configDoc.exists()) {
-                    await setDoc(configRef, { isOpen: true });
-                }
-                const inventoryDoc = await getDoc(inventoryRef);
-                if (!inventoryDoc.exists()) {
-                    await setDoc(inventoryRef, { submarineRolls: 32, sandwichLoaves: 36 });
-                }
-                // Example of how you might create pickup slots once
-                const sat9am = doc(pickupSlotsCollectionRef, 'saturday-9am');
-                const sat9amDoc = await getDoc(sat9am);
-                if (!sat9amDoc.exists()) {
-                    await setDoc(sat9am, { time: 'Saturday 9:00 AM', capacity: 10, booked: 0 });
-                }
-            } catch(error) {
-                console.error("Error creating initial data:", error);
-                showModal("Setup Error", "Failed to initialize bakery data.");
+async function checkAndCreateInitialData() {
+    try {
+        const configDoc = await getDoc(configRef);
+        if (!configDoc.exists()) {
+            await setDoc(configRef, { isOpen: true });
+        }
+        const inventoryDoc = await getDoc(inventoryRef);
+        if (!inventoryDoc.exists()) {
+            await setDoc(inventoryRef, { submarineRolls: 32, sandwichLoaves: 36 });
+        }
+
+        // Helper function to create a slot if it doesn't exist
+        async function createSlotIfNotExists(id, timeString, capacity = 3) {
+            const slotRef = doc(pickupSlotsCollectionRef, id);
+            const slotDoc = await getDoc(slotRef);
+            if (!slotDoc.exists()) {
+                await setDoc(slotRef, { time: timeString, capacity: capacity, booked: 0 });
             }
         }
+
+        // Create new pickup slots for Thursday and Friday
+        await createSlotIfNotExists('thursday-5pm', 'Thursday 5:00 PM');
+        await createSlotIfNotExists('thursday-6pm', 'Thursday 6:00 PM');
+        await createSlotIfNotExists('thursday-7pm', 'Thursday 7:00 PM');
+        await createSlotIfNotExists('thursday-8pm', 'Thursday 8:00 PM');
+        await createSlotIfNotExists('friday-5am', 'Friday 5:00 AM');
+        await createSlotIfNotExists('friday-6am', 'Friday 6:00 AM');
+        await createSlotIfNotExists('friday-7am', 'Friday 7:00 AM');
+        await createSlotIfNotExists('friday-8am', 'Friday 8:00 AM');
+
+    } catch(error) {
+        console.error("Error creating initial data:", error);
+        showModal("Setup Error", "Failed to initialize bakery data.");
+    }
+}
         
         function checkSubmarineStock(event) {
             const requested = parseInt(event.target.value, 10) || 0;
