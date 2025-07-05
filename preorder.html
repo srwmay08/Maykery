@@ -29,7 +29,7 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
     <div class="w-full max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg my-10">
-        
+
         <div id="loading-spinner" class="text-center">
             <svg class="animate-spin h-8 w-8 text-gray-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -41,7 +41,7 @@
         <div id="app-content" class="hidden">
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Weekly Bread Pre-Order</h1>
-<p class="text-gray-500 mt-2">Place your order for the upcoming week. Pickups are on Thursday & Friday.</p>
+                <p class="text-gray-500 mt-2">Place your order for the upcoming week. Pickups are on available baking days.</p>
                 <div id="status-banner" class="mt-4 p-3 rounded-md text-white font-semibold"></div>
             </div>
 
@@ -52,7 +52,7 @@
                         <p class="text-gray-600">Please check back next week!</p>
                     </div>
                 </div>
-                
+
                 <div class="mb-6">
                     <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Your Information</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -72,29 +72,19 @@
                 </div>
 
                 <div class="mb-6">
-                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Select a Pickup Time</h2>
-<p class="text-gray-500 mb-3">Please select an available time slot below.</p>
-                    <div id="pickup-slots-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        </div>
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Select a Pickup Day</h2>
+                    <p class="text-gray-500 mb-3">Please select an available day for baking below.</p>
+                    <div id="pickup-slots-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     <input type="hidden" id="selected-pickup-slot" name="selected-pickup-slot" required>
-                    <div id="pickup-slot-error" class="text-red-500 mt-2 hidden">Please select a pickup time.</div>
-                </div>
-
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Submarine Rolls</h2>
-                    <div class="flex items-center justify-between">
-                        <label for="submarine-rolls" class="text-gray-600">Submarine Rolls</label>
-                        <input type="number" id="submarine-rolls" name="submarine-rolls" min="0" class="w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div id="submarine-stock-message" class="text-right text-red-500 font-semibold mt-1 hidden">0 Rolls Remaining</div>
+                    <div id="pickup-slot-error" class="text-red-500 mt-2 hidden">Please select a pickup day.</div>
                 </div>
 
                 <div class="mb-6">
                     <div class="flex items-center justify-between border-b pb-2 mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Sandwich Loaves</h2>
-                         <div id="sandwich-stock-message" class="text-lg font-bold text-red-500 hidden">0 Loaves Remaining</div>
+                        <h2 class="text-xl font-semibold text-gray-700">Select Your Breads</h2>
+                        <div id="bread-stock-message" class="text-lg font-bold text-red-500 hidden">0 Loaves Remaining</div>
                     </div>
-                    <div class="space-y-4" id="sandwich-loaves-container">
+                    <div class="space-y-4" id="bread-options-container">
                         </div>
                 </div>
 
@@ -104,7 +94,7 @@
                     </button>
                 </div>
             </form>
-            
+
             <div class="mt-12 border-t pt-6 text-center">
                  <p class="text-xs text-gray-500">Admin Only</p>
                  <button id="admin-toggle" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Toggle Ordering Status</button>
@@ -143,35 +133,33 @@
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, runTransaction, serverTimestamp, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, runTransaction, serverTimestamp, getDocs, updateDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
-        
+
         // --- CONFIGURATION ---
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyB9odsDqgpAu7b5MlM4KrwskQZa7d09UF0",
-  authDomain: "themaykery-5646c.firebaseapp.com",
-  projectId: "themaykery-5646c",
-  storageBucket: "themaykery-5646c.appspot.com",
-  messagingSenderId: "498101134715",
-  appId: "1:498101134715:web:2a40a239f13e376b1a89de",
-  measurementId: "G-VCQVVK7997"
-};
-        
+        const firebaseConfig = {
+          apiKey: "AIzaSyB9odsDqgpAu7b5MlM4KrwskQZa7d09UF0",
+          authDomain: "themaykery-5646c.firebaseapp.com",
+          projectId: "themaykery-5646c",
+          storageBucket: "themaykery-5646c.appspot.com",
+          messagingSenderId: "498101134715",
+          appId: "1:498101134715:web:2a40a239f13e376b1a89de",
+          measurementId: "G-VCQVVK7997"
+        };
+
         // --- INITIALIZATION ---
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
         const functions = getFunctions(app);
-        
+
         let userId = null;
         let isAuthReady = false;
+        let orderTimeout;
 
         // --- ELEMENTS ---
-        const submarineInput = document.getElementById('submarine-rolls');
-        const submarineStockMessage = document.getElementById('submarine-stock-message');
-        const sandwichLoavesContainer = document.getElementById('sandwich-loaves-container');
-        const sandwichStockMessage = document.getElementById('sandwich-stock-message');
+        const breadOptionsContainer = document.getElementById('bread-options-container');
+        const breadStockMessage = document.getElementById('bread-stock-message');
         const form = document.getElementById('preorder-form');
         const loadingSpinner = document.getElementById('loading-spinner');
         const appContent = document.getElementById('app-content');
@@ -182,29 +170,30 @@ const firebaseConfig = {
         const pickupSlotsContainer = document.getElementById('pickup-slots-container');
         const selectedPickupSlotInput = document.getElementById('selected-pickup-slot');
         const pickupSlotError = document.getElementById('pickup-slot-error');
-        
+
         // Modal Elements
         const messageModal = document.getElementById('message-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
         const modalCloseBtn = document.getElementById('modal-close');
-        
+
         const adminModal = document.getElementById('admin-modal');
         const adminPasswordInput = document.getElementById('admin-password-input');
         const adminCancelBtn = document.getElementById('admin-cancel');
         const adminSubmitBtn = document.getElementById('admin-submit');
 
         // --- STATE ---
-        let currentMaxSubmarine = 32;
-        let currentMaxSandwich = 36;
-        const SANDWICH_FLAVORS = [
+        let dailyBreadCapacity = 16;
+        let availableBreads = {}; // Will hold capacity for each day
+        const BREAD_FLAVORS = [
+            { id: 'submarine-rolls', name: 'Submarine Rolls' },
             { id: 'plain', name: 'Plain' }, { id: 'herbes-cheddar', name: 'Herbes & Cheddar' },
             { id: 'sriracha-cheddar', name: 'Sriracha & Cheddar' }, { id: 'cinnamon-marble', name: 'Cinnamon Marble' },
             { id: 'rosemary-garlic', name: 'Rosemary & Garlic' },
         ];
-        let sandwichInputs = {};
+        let breadInputs = {};
         let selectedSlot = null;
-        
+
         // --- HELPER FUNCTIONS ---
         function showModal(title, message) {
             modalTitle.textContent = title;
@@ -213,14 +202,14 @@ const firebaseConfig = {
         }
         modalCloseBtn.addEventListener('click', () => messageModal.classList.add('hidden'));
 
-        function createSandwichFlavorInput(flavor) {
+        function createBreadFlavorInput(flavor) {
             const div = document.createElement('div');
             div.className = 'flex items-center justify-between';
             div.innerHTML = `
                 <label for="${flavor.id}" class="text-gray-600">${flavor.name}</label>
-                <input type="number" id="${flavor.id}" name="${flavor.id}" min="0" class="sandwich-loaf-input w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <input type="number" id="${flavor.id}" name="${flavor.id}" min="0" class="bread-loaf-input w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
             `;
-            sandwichLoavesContainer.appendChild(div);
+            breadOptionsContainer.appendChild(div);
             return div.querySelector('input');
         }
 
@@ -233,7 +222,7 @@ const firebaseConfig = {
                 initializeApplication();
             } else { isAuthReady = false; userId = null; }
         });
-        
+
         async function setupAuth() {
             try {
                 await setPersistence(auth, inMemoryPersistence);
@@ -243,24 +232,23 @@ const firebaseConfig = {
 
         // --- FIRESTORE REFERENCES ---
         const configRef = doc(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'config', 'settings');
-        const inventoryRef = doc(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'inventory', 'counts');
         const ordersCollectionRef = collection(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'orders');
         const pickupSlotsCollectionRef = collection(db, 'artifacts', 'themaykery-preorder-app', 'public', 'data', 'pickupSlots');
 
         // --- APPLICATION LOGIC ---
         async function initializeApplication() {
             if (!isAuthReady) { return; }
-            
-            SANDWICH_FLAVORS.forEach(flavor => {
-                const inputEl = createSandwichFlavorInput(flavor);
-                sandwichInputs[flavor.id] = inputEl;
-                inputEl.addEventListener('input', checkSandwichStock);
+
+            BREAD_FLAVORS.forEach(flavor => {
+                const inputEl = createBreadFlavorInput(flavor);
+                breadInputs[flavor.id] = inputEl;
+                inputEl.addEventListener('input', checkBreadStock);
             });
-            submarineInput.addEventListener('input', checkSubmarineStock);
 
             await checkAndCreateInitialData();
             await loadPickupSlots();
             setupListeners();
+            startOrderTimeout();
             loadingSpinner.classList.add('hidden');
             appContent.classList.remove('hidden');
         }
@@ -268,18 +256,32 @@ const firebaseConfig = {
         async function loadPickupSlots() {
             pickupSlotsContainer.innerHTML = 'Loading slots...';
             try {
-                const snapshot = await getDocs(pickupSlotsCollectionRef);
-                pickupSlotsContainer.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const slot = doc.data();
-                    if (slot.booked < slot.capacity) {
-                        const slotEl = document.createElement('button');
-                        slotEl.type = 'button';
-                        slotEl.dataset.id = doc.id;
-                        slotEl.textContent = `${slot.time} (${slot.capacity - slot.booked} left)`;
-                        slotEl.className = 'p-3 border rounded-md text-center hover:bg-indigo-100 transition-colors';
-                        slotEl.addEventListener('click', () => handleSlotSelection(slotEl));
-                        pickupSlotsContainer.appendChild(slotEl);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayId = today.toISOString().split('T')[0];
+
+                const q = query(pickupSlotsCollectionRef, where('date', '>=', todayId), orderBy('date'));
+                onSnapshot(q, (snapshot) => {
+                    pickupSlotsContainer.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const slot = doc.data();
+                        availableBreads[doc.id] = slot.capacity - slot.booked;
+                        if (slot.booked < slot.capacity) {
+                            const slotEl = document.createElement('button');
+                            slotEl.type = 'button';
+                            slotEl.dataset.id = doc.id;
+                            slotEl.innerHTML = `
+                                <div class="font-bold text-lg">${slot.dayName}</div>
+                                <div class="text-sm text-gray-600">${slot.date}</div>
+                                <div class="mt-2 text-xs font-semibold">${availableBreads[doc.id]} loaves available</div>
+                            `;
+                            slotEl.className = 'p-4 border rounded-lg text-center hover:bg-indigo-100 transition-colors shadow-sm';
+                            slotEl.addEventListener('click', () => handleSlotSelection(slotEl));
+                            pickupSlotsContainer.appendChild(slotEl);
+                        }
+                    });
+                    if (pickupSlotsContainer.innerHTML === '') {
+                        pickupSlotsContainer.innerHTML = '<p class="text-gray-500 md:col-span-2 text-center">No upcoming baking days. Please check back later!</p>';
                     }
                 });
             } catch (error) {
@@ -289,73 +291,81 @@ const firebaseConfig = {
         }
 
         function handleSlotSelection(selectedEl) {
-            // Deselect any previously selected slot
             document.querySelectorAll('#pickup-slots-container button').forEach(btn => {
-                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.remove('bg-indigo-600', 'text-white', 'ring-2', 'ring-indigo-500');
+                 btn.classList.add('hover:bg-indigo-100');
             });
-
-            // Select the new one
-            selectedEl.classList.add('bg-indigo-600', 'text-white');
+            selectedEl.classList.add('bg-indigo-600', 'text-white', 'ring-2', 'ring-indigo-500');
+            selectedEl.classList.remove('hover:bg-indigo-100');
             selectedPickupSlotInput.value = selectedEl.dataset.id;
             pickupSlotError.classList.add('hidden');
+            updateBreadStockMessage();
+            resetOrderTimeout();
         }
 
-async function checkAndCreateInitialData() {
-    try {
-        const configDoc = await getDoc(configRef);
-        if (!configDoc.exists()) {
-            await setDoc(configRef, { isOpen: true });
-        }
-        const inventoryDoc = await getDoc(inventoryRef);
-        if (!inventoryDoc.exists()) {
-            await setDoc(inventoryRef, { submarineRolls: 32, sandwichLoaves: 36 });
-        }
+        async function checkAndCreateInitialData() {
+            try {
+                const configDoc = await getDoc(configRef);
+                if (!configDoc.exists()) {
+                    await setDoc(configRef, { isOpen: true });
+                }
 
-        // Helper function to create a slot if it doesn't exist
-        async function createSlotIfNotExists(id, timeString, capacity = 3) {
-            const slotRef = doc(pickupSlotsCollectionRef, id);
-            const slotDoc = await getDoc(slotRef);
-            if (!slotDoc.exists()) {
-                await setDoc(slotRef, { time: timeString, capacity: capacity, booked: 0 });
+                async function createSlotIfNotExists(date) {
+                    const dateId = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+                    const slotRef = doc(pickupSlotsCollectionRef, dateId);
+                    const slotDoc = await getDoc(slotRef);
+                    if (!slotDoc.exists()) {
+                        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                        await setDoc(slotRef, {
+                            date: dateId,
+                            dayName: dayName,
+                            capacity: dailyBreadCapacity,
+                            booked: 0
+                        });
+                    }
+                }
+                
+                // Create slots for the next upcoming Saturday and Sunday
+                let today = new Date();
+                let dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+                let nextSaturday = new Date(today);
+                nextSaturday.setDate(today.getDate() + (6 - dayOfWeek + 7) % 7);
+                await createSlotIfNotExists(nextSaturday);
+
+                let nextSunday = new Date(today);
+                nextSunday.setDate(today.getDate() + (7 - dayOfWeek));
+                if (dayOfWeek === 0) nextSunday.setDate(today.getDate() + 7); // If today is Sunday, get next Sunday
+                 await createSlotIfNotExists(nextSunday);
+
+            } catch(error) {
+                console.error("Error creating initial data:", error);
+                showModal("Setup Error", "Failed to initialize bakery data. Please ensure Firestore permissions are set correctly.");
             }
         }
 
-        // Create new pickup slots for Thursday and Friday
-        await createSlotIfNotExists('thursday-5pm', 'Thursday 5:00 PM');
-        await createSlotIfNotExists('thursday-6pm', 'Thursday 6:00 PM');
-        await createSlotIfNotExists('thursday-7pm', 'Thursday 7:00 PM');
-        await createSlotIfNotExists('thursday-8pm', 'Thursday 8:00 PM');
-        await createSlotIfNotExists('friday-5am', 'Friday 5:00 AM');
-        await createSlotIfNotExists('friday-6am', 'Friday 6:00 AM');
-        await createSlotIfNotExists('friday-7am', 'Friday 7:00 AM');
-        await createSlotIfNotExists('friday-8am', 'Friday 8:00 AM');
-
-    } catch(error) {
-        console.error("Error creating initial data:", error);
-        showModal("Setup Error", "Failed to initialize bakery data.");
-    }
-}
-        
-        function checkSubmarineStock(event) {
-            const requested = parseInt(event.target.value, 10) || 0;
-            if (requested > currentMaxSubmarine) {
-                event.target.value = currentMaxSubmarine;
-                submarineStockMessage.classList.remove('hidden');
+        function updateBreadStockMessage() {
+            const selectedDay = selectedPickupSlotInput.value;
+            if (selectedDay && availableBreads[selectedDay] !== undefined) {
+                breadStockMessage.textContent = `${availableBreads[selectedDay]} Loaves Remaining`;
+                breadStockMessage.classList.remove('hidden');
             } else {
-                submarineStockMessage.classList.add('hidden');
+                breadStockMessage.classList.add('hidden');
             }
         }
 
-        function checkSandwichStock(event) {
-            const totalOrdered = Object.values(sandwichInputs).reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
+        function checkBreadStock(event) {
+            const selectedDay = selectedPickupSlotInput.value;
+            if (!selectedDay) return;
             
-            if (totalOrdered > currentMaxSandwich) {
-                const overage = totalOrdered - currentMaxSandwich;
+            const maxForDay = availableBreads[selectedDay];
+            const totalOrdered = Object.values(breadInputs).reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
+            
+            if (totalOrdered > maxForDay) {
+                const overage = totalOrdered - maxForDay;
                 event.target.value = Math.max(0, parseInt(event.target.value) - overage);
-                sandwichStockMessage.classList.remove('hidden');
-            } else {
-                 sandwichStockMessage.classList.add('hidden');
             }
+            resetOrderTimeout();
         }
 
         function setupListeners() {
@@ -363,16 +373,6 @@ async function checkAndCreateInitialData() {
                 if(doc.exists()) updateOrderingStatusUI(doc.data().isOpen);
             }, (error) => { console.error("Error listening to config:", error); showModal("Connection Error", "Could not get ordering status."); });
 
-            onSnapshot(inventoryRef, (doc) => {
-                if(doc.exists()) {
-                    const data = doc.data();
-                    currentMaxSubmarine = data.submarineRolls;
-                    currentMaxSandwich = data.sandwichLoaves;
-                    submarineStockMessage.textContent = `${currentMaxSubmarine} Rolls Remaining`;
-                    sandwichStockMessage.textContent = `${currentMaxSandwich} Loaves Remaining`;
-                }
-            }, (error) => { console.error("Error listening to inventory:", error); showModal("Connection Error", "Could not get inventory updates."); });
-            
             form.addEventListener('submit', handleFormSubmit);
             adminToggleButton.addEventListener('click', () => adminModal.classList.remove('hidden'));
             adminCancelBtn.addEventListener('click', () => adminModal.classList.add('hidden'));
@@ -382,7 +382,7 @@ async function checkAndCreateInitialData() {
         function updateOrderingStatusUI(isOpen) {
             const submitButton = document.getElementById('submit-order');
             const inputs = form.querySelectorAll('input');
-            if (isOpen && (currentMaxSandwich > 0 || currentMaxSubmarine > 0)) {
+            if (isOpen) {
                 statusBanner.textContent = "Ordering is Open!";
                 statusBanner.className = "mt-4 p-3 rounded-md text-white font-semibold bg-green-500";
                 closedOverlay.classList.add('hidden');
@@ -396,15 +396,18 @@ async function checkAndCreateInitialData() {
                 inputs.forEach(i => i.disabled = true);
             }
         }
-        
+
         async function handleFormSubmit(e) {
             e.preventDefault();
+            clearTimeout(orderTimeout);
 
-            if (!selectedPickupSlotInput.value) {
+            const selectedDayId = selectedPickupSlotInput.value;
+            if (!selectedDayId) {
                 pickupSlotError.classList.remove('hidden');
+                startOrderTimeout();
                 return;
             }
-            
+
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
             submitButton.textContent = 'Processing...';
@@ -417,15 +420,12 @@ async function checkAndCreateInitialData() {
             };
 
             const items = [];
-            const subsOrdered = parseInt(formData.get('submarine-rolls'), 10) || 0;
-            if (subsOrdered > 0) items.push({ name: 'Submarine Rolls', quantity: subsOrdered, price: 5 }); // Example price
-
-            let sandwichLoavesOrdered = 0;
-            SANDWICH_FLAVORS.forEach(flavor => {
+            let totalLoaves = 0;
+            BREAD_FLAVORS.forEach(flavor => {
                 const quantity = parseInt(formData.get(flavor.id), 10) || 0;
                 if (quantity > 0) {
                     items.push({ name: flavor.name, quantity, price: 8 }); // Example price
-                    sandwichLoavesOrdered += quantity;
+                    totalLoaves += quantity;
                 }
             });
 
@@ -433,33 +433,34 @@ async function checkAndCreateInitialData() {
                 showModal("Empty Order", "Please select at least one item.");
                 submitButton.disabled = false;
                 submitButton.textContent = 'Submit & Proceed to Payment';
+                startOrderTimeout();
+                return;
+            }
+
+            if (totalLoaves < 2) {
+                showModal("Minimum Order", "You must order a minimum of two loaves.");
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit & Proceed to Payment';
+                startOrderTimeout();
                 return;
             }
 
             try {
                 let newOrderId;
                 await runTransaction(db, async (transaction) => {
-                    const inventoryDoc = await transaction.get(inventoryRef);
-                    const pickupSlotDocRef = doc(pickupSlotsCollectionRef, selectedPickupSlotInput.value);
+                    const pickupSlotDocRef = doc(pickupSlotsCollectionRef, selectedDayId);
                     const pickupSlotDoc = await transaction.get(pickupSlotDocRef);
 
-                    if (!inventoryDoc.exists() || !pickupSlotDoc.exists()) throw new Error("Data error.");
+                    if (!pickupSlotDoc.exists()) throw new Error("Pickup day no longer exists.");
                     
-                    const inv = inventoryDoc.data();
                     const slot = pickupSlotDoc.data();
+                    const remainingCapacity = slot.capacity - slot.booked;
 
-                    if (subsOrdered > inv.submarineRolls || sandwichLoavesOrdered > inv.sandwichLoaves) {
-                        throw new Error("Not enough items in stock. Please refresh.");
-                    }
-                     if (slot.booked >= slot.capacity) {
-                        throw new Error("Selected pickup slot is now full. Please select another.");
+                    if (totalLoaves > remainingCapacity) {
+                        throw new Error("Not enough items in stock for this day. Please reduce your quantity or select another day.");
                     }
 
-                    transaction.update(inventoryRef, {
-                        submarineRolls: inv.submarineRolls - subsOrdered,
-                        sandwichLoaves: inv.sandwichLoaves - sandwichLoavesOrdered
-                    });
-                    transaction.update(pickupSlotDocRef, { booked: slot.booked + 1 });
+                    transaction.update(pickupSlotDocRef, { booked: slot.booked + totalLoaves });
                     
                     const newOrderRef = doc(ordersCollectionRef);
                     newOrderId = newOrderRef.id;
@@ -468,19 +469,26 @@ async function checkAndCreateInitialData() {
                         customerEmail: customer.email,
                         customerPhone: customer.phone,
                         items: items,
-                        pickupSlot: pickupSlotDoc.data().time,
+                        pickupDay: slot.date,
                         createdAt: serverTimestamp(),
                         status: 'pending_payment',
                         userId: userId
                     });
                 });
                 
-                showModal("Order Received!", `Thank you, ${customer.name}! This is where you would normally be redirected for payment. Since the backend is not set up, we will stop here. Your order is recorded.`);
+                showModal("Order Received!", `Thank you, ${customer.name}! Your order has been recorded.`);
                 form.reset();
+                document.querySelectorAll('#pickup-slots-container button').forEach(btn => {
+                    btn.classList.remove('bg-indigo-600', 'text-white', 'ring-2', 'ring-indigo-500');
+                    btn.classList.add('hover:bg-indigo-100');
+                });
+                breadStockMessage.classList.add('hidden');
+                startOrderTimeout();
 
             } catch (error) {
                 console.error("Order submission failed: ", error);
                 showModal("Order Failed", `Error: ${error.message}`);
+                startOrderTimeout();
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Submit & Proceed to Payment';
@@ -509,6 +517,23 @@ async function checkAndCreateInitialData() {
             }
         }
         
+        function startOrderTimeout() {
+            clearTimeout(orderTimeout);
+            orderTimeout = setTimeout(() => {
+                showModal("Session Expired", "Your session has expired due to inactivity. The form has been reset.");
+                form.reset();
+                document.querySelectorAll('#pickup-slots-container button').forEach(btn => {
+                   btn.classList.remove('bg-indigo-600', 'text-white', 'ring-2', 'ring-indigo-500');
+                });
+                breadStockMessage.classList.add('hidden');
+
+            }, 15 * 60 * 1000); // 15 minutes
+        }
+
+        function resetOrderTimeout() {
+            startOrderTimeout();
+        }
+
         // --- STARTUP ---
         setupAuth();
     </script>

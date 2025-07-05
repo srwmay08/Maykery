@@ -63,7 +63,7 @@ exports.sendOrderConfirmationEmail = functions.firestore
       to: "sean@maykery.com", // Your email
       from: "noreply@yourdomain.com", // A verified email with SendGrid
       subject: "New Pre-order Received!",
-      html: `<p>You have a new order from ${orderData.customerName}.</p>`, // Customize as needed
+      html: `<p>You have a new order from ${orderData.customerName} for pickup on ${orderData.pickupDay}.</p>`, // Customize as needed
     };
 
     return sgMail.send(msg);
