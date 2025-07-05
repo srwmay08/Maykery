@@ -28,7 +28,7 @@
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-    <div class="w-full max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg my-10">
+    <div class="w-full max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg my-10">
 
         <div id="loading-spinner" class="text-center">
             <svg class="animate-spin h-8 w-8 text-gray-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -74,18 +74,27 @@
                 <div class="mb-6">
                     <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Select a Pickup Day</h2>
                     <p class="text-gray-500 mb-3">Please select an available day for baking below.</p>
-                    <div id="pickup-slots-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    <div id="pickup-slots-container" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4"></div>
                     <input type="hidden" id="selected-pickup-slot" name="selected-pickup-slot" required>
                     <div id="pickup-slot-error" class="text-red-500 mt-2 hidden">Please select a pickup day.</div>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center justify-between border-b pb-2 mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Sandwich Loaves</h2>
+                         <div id="sandwich-stock-message" class="text-lg font-bold text-red-500 hidden">0 Loaves Remaining</div>
+                    </div>
+                    <div class="space-y-4" id="sandwich-loaves-container">
+                    </div>
                 </div>
 
                 <div class="mb-6">
                     <div class="flex items-center justify-between border-b pb-2 mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Select Your Breads</h2>
-                        <div id="bread-stock-message" class="text-lg font-bold text-red-500 hidden">0 Loaves Remaining</div>
+                        <h2 class="text-xl font-semibold text-gray-700">Submarine Rolls</h2>
+                         <div id="submarine-stock-message" class="text-lg font-bold text-red-500 hidden">0 Rolls Remaining</div>
                     </div>
-                    <div class="space-y-4" id="bread-options-container">
-                        </div>
+                    <div class="space-y-4" id="submarine-rolls-container">
+                    </div>
                 </div>
 
                 <div class="mt-8">
@@ -158,8 +167,10 @@
         let orderTimeout;
 
         // --- ELEMENTS ---
-        const breadOptionsContainer = document.getElementById('bread-options-container');
-        const breadStockMessage = document.getElementById('bread-stock-message');
+        const sandwichLoavesContainer = document.getElementById('sandwich-loaves-container');
+        const submarineRollsContainer = document.getElementById('submarine-rolls-container');
+        const sandwichStockMessage = document.getElementById('sandwich-stock-message');
+        const submarineStockMessage = document.getElementById('submarine-stock-message');
         const form = document.getElementById('preorder-form');
         const loadingSpinner = document.getElementById('loading-spinner');
         const appContent = document.getElementById('app-content');
@@ -183,16 +194,15 @@
         const adminSubmitBtn = document.getElementById('admin-submit');
 
         // --- STATE ---
-        let dailyBreadCapacity = 16;
+        let dailyCapacity = { sandwichLoaves: 16, submarineRolls: 16 };
         let availableBreads = {}; // Will hold capacity for each day
-        const BREAD_FLAVORS = [
-            { id: 'submarine-rolls', name: 'Submarine Rolls' },
+        const SANDWICH_FLAVORS = [
             { id: 'plain', name: 'Plain' }, { id: 'herbes-cheddar', name: 'Herbes & Cheddar' },
             { id: 'sriracha-cheddar', name: 'Sriracha & Cheddar' }, { id: 'cinnamon-marble', name: 'Cinnamon Marble' },
             { id: 'rosemary-garlic', name: 'Rosemary & Garlic' },
         ];
-        let breadInputs = {};
-        let selectedSlot = null;
+        let sandwichInputs = {};
+        let submarineInput;
 
         // --- HELPER FUNCTIONS ---
         function showModal(title, message) {
@@ -202,14 +212,14 @@
         }
         modalCloseBtn.addEventListener('click', () => messageModal.classList.add('hidden'));
 
-        function createBreadFlavorInput(flavor) {
+        function createItemInput(item, container) {
             const div = document.createElement('div');
             div.className = 'flex items-center justify-between';
             div.innerHTML = `
-                <label for="${flavor.id}" class="text-gray-600">${flavor.name}</label>
-                <input type="number" id="${flavor.id}" name="${flavor.id}" min="0" class="bread-loaf-input w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <label for="${item.id}" class="text-gray-600">${item.name}</label>
+                <input type="number" id="${item.id}" name="${item.id}" min="0" class="w-20 text-center border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
             `;
-            breadOptionsContainer.appendChild(div);
+            container.appendChild(div);
             return div.querySelector('input');
         }
 
@@ -239,11 +249,15 @@
         async function initializeApplication() {
             if (!isAuthReady) { return; }
 
-            BREAD_FLAVORS.forEach(flavor => {
-                const inputEl = createBreadFlavorInput(flavor);
-                breadInputs[flavor.id] = inputEl;
-                inputEl.addEventListener('input', checkBreadStock);
+            SANDWICH_FLAVORS.forEach(flavor => {
+                const inputEl = createItemInput(flavor, sandwichLoavesContainer);
+                sandwichInputs[flavor.id] = inputEl;
+                inputEl.addEventListener('input', checkSandwichStock);
             });
+            
+            submarineInput = createItemInput({ id: 'submarine-rolls', name: 'Submarine Rolls'}, submarineRollsContainer);
+            submarineInput.addEventListener('input', checkSubmarineStock);
+
 
             await checkAndCreateInitialData();
             await loadPickupSlots();
@@ -265,15 +279,23 @@
                     pickupSlotsContainer.innerHTML = '';
                     snapshot.forEach(doc => {
                         const slot = doc.data();
-                        availableBreads[doc.id] = slot.capacity - slot.booked;
-                        if (slot.booked < slot.capacity) {
-                            const slotEl = document.createElement('button');
+                        const remainingSandwich = slot.capacity.sandwichLoaves - slot.booked.sandwichLoaves;
+                        const remainingSubmarine = slot.capacity.submarineRolls - slot.booked.submarineRolls;
+                        
+                        availableBreads[doc.id] = {
+                            sandwichLoaves: remainingSandwich,
+                            submarineRolls: remainingSubmarine
+                        };
+
+                        if (remainingSandwich > 0 || remainingSubmarine > 0) {
+                             const slotEl = document.createElement('button');
                             slotEl.type = 'button';
                             slotEl.dataset.id = doc.id;
+                            const dayAbbreviation = slot.dayName.substring(0, 3).toUpperCase();
                             slotEl.innerHTML = `
-                                <div class="font-bold text-lg">${slot.dayName}</div>
-                                <div class="text-sm text-gray-600">${slot.date}</div>
-                                <div class="mt-2 text-xs font-semibold">${availableBreads[doc.id]} loaves available</div>
+                                <div class="font-bold text-lg">${dayAbbreviation}</div>
+                                <div class="text-sm text-gray-600">${new Date(slot.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                <div class="mt-2 text-xs font-semibold">${remainingSandwich + remainingSubmarine} total left</div>
                             `;
                             slotEl.className = 'p-4 border rounded-lg text-center hover:bg-indigo-100 transition-colors shadow-sm';
                             slotEl.addEventListener('click', () => handleSlotSelection(slotEl));
@@ -281,7 +303,7 @@
                         }
                     });
                     if (pickupSlotsContainer.innerHTML === '') {
-                        pickupSlotsContainer.innerHTML = '<p class="text-gray-500 md:col-span-2 text-center">No upcoming baking days. Please check back later!</p>';
+                        pickupSlotsContainer.innerHTML = '<p class="text-gray-500 md:col-span-4 lg:col-span-7 text-center">No upcoming baking days. Please check back later!</p>';
                     }
                 });
             } catch (error) {
@@ -299,7 +321,7 @@
             selectedEl.classList.remove('hover:bg-indigo-100');
             selectedPickupSlotInput.value = selectedEl.dataset.id;
             pickupSlotError.classList.add('hidden');
-            updateBreadStockMessage();
+            updateStockMessages();
             resetOrderTimeout();
         }
 
@@ -319,24 +341,24 @@
                         await setDoc(slotRef, {
                             date: dateId,
                             dayName: dayName,
-                            capacity: dailyBreadCapacity,
-                            booked: 0
+                            capacity: {
+                                sandwichLoaves: dailyCapacity.sandwichLoaves,
+                                submarineRolls: dailyCapacity.submarineRolls
+                            },
+                            booked: {
+                                sandwichLoaves: 0,
+                                submarineRolls: 0
+                            }
                         });
                     }
                 }
                 
-                // Create slots for the next upcoming Saturday and Sunday
-                let today = new Date();
-                let dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-
-                let nextSaturday = new Date(today);
-                nextSaturday.setDate(today.getDate() + (6 - dayOfWeek + 7) % 7);
-                await createSlotIfNotExists(nextSaturday);
-
-                let nextSunday = new Date(today);
-                nextSunday.setDate(today.getDate() + (7 - dayOfWeek));
-                if (dayOfWeek === 0) nextSunday.setDate(today.getDate() + 7); // If today is Sunday, get next Sunday
-                 await createSlotIfNotExists(nextSunday);
+                // Create slots for the next 14 days
+                for (let i = 0; i < 14; i++) {
+                    let futureDate = new Date();
+                    futureDate.setDate(futureDate.getDate() + i);
+                    await createSlotIfNotExists(futureDate);
+                }
 
             } catch(error) {
                 console.error("Error creating initial data:", error);
@@ -344,26 +366,43 @@
             }
         }
 
-        function updateBreadStockMessage() {
+        function updateStockMessages() {
             const selectedDay = selectedPickupSlotInput.value;
-            if (selectedDay && availableBreads[selectedDay] !== undefined) {
-                breadStockMessage.textContent = `${availableBreads[selectedDay]} Loaves Remaining`;
-                breadStockMessage.classList.remove('hidden');
+            if (selectedDay && availableBreads[selectedDay]) {
+                const stock = availableBreads[selectedDay];
+                sandwichStockMessage.textContent = `${stock.sandwichLoaves} Loaves Remaining`;
+                submarineStockMessage.textContent = `${stock.submarineRolls} Rolls Remaining`;
+                sandwichStockMessage.classList.remove('hidden');
+                submarineStockMessage.classList.remove('hidden');
             } else {
-                breadStockMessage.classList.add('hidden');
+                sandwichStockMessage.classList.add('hidden');
+                submarineStockMessage.classList.add('hidden');
             }
         }
-
-        function checkBreadStock(event) {
+        
+        function checkSandwichStock(event) {
             const selectedDay = selectedPickupSlotInput.value;
             if (!selectedDay) return;
             
-            const maxForDay = availableBreads[selectedDay];
-            const totalOrdered = Object.values(breadInputs).reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
+            const maxForDay = availableBreads[selectedDay].sandwichLoaves;
+            const totalOrdered = Object.values(sandwichInputs).reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
             
             if (totalOrdered > maxForDay) {
                 const overage = totalOrdered - maxForDay;
                 event.target.value = Math.max(0, parseInt(event.target.value) - overage);
+            }
+            resetOrderTimeout();
+        }
+
+        function checkSubmarineStock(event) {
+            const selectedDay = selectedPickupSlotInput.value;
+            if (!selectedDay) return;
+            
+            const maxForDay = availableBreads[selectedDay].submarineRolls;
+            const requested = parseInt(event.target.value, 10) || 0;
+            
+            if (requested > maxForDay) {
+                event.target.value = maxForDay;
             }
             resetOrderTimeout();
         }
@@ -420,14 +459,19 @@
             };
 
             const items = [];
-            let totalLoaves = 0;
-            BREAD_FLAVORS.forEach(flavor => {
+            let totalSandwichLoaves = 0;
+            SANDWICH_FLAVORS.forEach(flavor => {
                 const quantity = parseInt(formData.get(flavor.id), 10) || 0;
                 if (quantity > 0) {
-                    items.push({ name: flavor.name, quantity, price: 8 }); // Example price
-                    totalLoaves += quantity;
+                    items.push({ name: flavor.name, quantity, price: 8 });
+                    totalSandwichLoaves += quantity;
                 }
             });
+            
+            const totalSubmarineRolls = parseInt(formData.get('submarine-rolls'), 10) || 0;
+            if (totalSubmarineRolls > 0) {
+                items.push({ name: 'Submarine Rolls', quantity: totalSubmarineRolls, price: 5 });
+            }
 
             if (items.length === 0) {
                 showModal("Empty Order", "Please select at least one item.");
@@ -437,8 +481,8 @@
                 return;
             }
 
-            if (totalLoaves < 2) {
-                showModal("Minimum Order", "You must order a minimum of two loaves.");
+            if ((totalSandwichLoaves + totalSubmarineRolls) < 2) {
+                showModal("Minimum Order", "You must order a minimum of two items.");
                 submitButton.disabled = false;
                 submitButton.textContent = 'Submit & Proceed to Payment';
                 startOrderTimeout();
@@ -446,7 +490,6 @@
             }
 
             try {
-                let newOrderId;
                 await runTransaction(db, async (transaction) => {
                     const pickupSlotDocRef = doc(pickupSlotsCollectionRef, selectedDayId);
                     const pickupSlotDoc = await transaction.get(pickupSlotDocRef);
@@ -454,16 +497,19 @@
                     if (!pickupSlotDoc.exists()) throw new Error("Pickup day no longer exists.");
                     
                     const slot = pickupSlotDoc.data();
-                    const remainingCapacity = slot.capacity - slot.booked;
+                    const remainingSandwich = slot.capacity.sandwichLoaves - slot.booked.sandwichLoaves;
+                    const remainingSubmarine = slot.capacity.submarineRolls - slot.booked.submarineRolls;
 
-                    if (totalLoaves > remainingCapacity) {
+                    if (totalSandwichLoaves > remainingSandwich || totalSubmarineRolls > remainingSubmarine) {
                         throw new Error("Not enough items in stock for this day. Please reduce your quantity or select another day.");
                     }
 
-                    transaction.update(pickupSlotDocRef, { booked: slot.booked + totalLoaves });
+                    transaction.update(pickupSlotDocRef, { 
+                        'booked.sandwichLoaves': slot.booked.sandwichLoaves + totalSandwichLoaves,
+                        'booked.submarineRolls': slot.booked.submarineRolls + totalSubmarineRolls
+                    });
                     
                     const newOrderRef = doc(ordersCollectionRef);
-                    newOrderId = newOrderRef.id;
                     transaction.set(newOrderRef, {
                         customerName: customer.name,
                         customerEmail: customer.email,
@@ -482,7 +528,8 @@
                     btn.classList.remove('bg-indigo-600', 'text-white', 'ring-2', 'ring-indigo-500');
                     btn.classList.add('hover:bg-indigo-100');
                 });
-                breadStockMessage.classList.add('hidden');
+                sandwichStockMessage.classList.add('hidden');
+                submarineStockMessage.classList.add('hidden');
                 startOrderTimeout();
 
             } catch (error) {
@@ -497,7 +544,7 @@
         
         async function handleAdminToggle() {
             const password = adminPasswordInput.value;
-            adminPasswordInput.value = ''; // Clear password
+            adminPasswordInput.value = '';
             adminModal.classList.add('hidden');
 
             if (password === "bakeryadmin") {
@@ -525,7 +572,8 @@
                 document.querySelectorAll('#pickup-slots-container button').forEach(btn => {
                    btn.classList.remove('bg-indigo-600', 'text-white', 'ring-2', 'ring-indigo-500');
                 });
-                breadStockMessage.classList.add('hidden');
+                sandwichStockMessage.classList.add('hidden');
+                submarineStockMessage.classList.add('hidden');
 
             }, 15 * 60 * 1000); // 15 minutes
         }
