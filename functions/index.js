@@ -1,85 +1,81 @@
-const functions = require("firebase-functions");
+// Firebase v2 Imports
+const {onCall} = require("firebase-functions/v2/https");
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {log} = require("firebase-functions/logger");
+
+// Other Imports
 const admin = require("firebase-admin");
 const { Client, Environment } = require("square");
 const sgMail = require("@sendgrid/mail");
-const cors = require("cors")({origin: true});
 
 admin.initializeApp();
 
+// Initialize Square Client
 const squareClient = new Client({
-  environment: Environment.Sandbox,
-  accessToken: functions.config().square.access_token,
+  environment: Environment.Sandbox, // Change to Environment.Production for live payments
+  accessToken: process.env.SQUARE_ACCESS_TOKEN, // Use environment variables for security
 });
 
-sgMail.setApiKey(functions.config().sendgrid.api_key);
+// Initialize SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY); // Use environment variables for security
 
-exports.createPaymentLink = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    console.log("createPaymentLink function triggered. Method:", req.method);
+// Function to create a Square Payment Link
+exports.createPaymentLink = onCall(async (request) => {
+  const { data } = request;
+  const { order, customer } = data;
 
-    if (req.method !== "POST") {
-      return res.status(405).send("Method Not Allowed");
-    }
+  // Ensure user is authenticated to get a UID
+  if (!request.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+  }
+  const uid = request.auth.uid;
 
-    try {
-      const {items, customer} = req.body.data;
-      const idempotencyKey = admin.firestore().collection("tmp").doc().id;
-
-      if (!items || !customer) {
-        console.error("Missing order or customer data in request.");
-        return res.status(400).send({error: {message: "Missing order or customer data in request."}});
-      }
-
-      const lineItems = items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity.toString(),
-        basePriceMoney: {
-          amount: item.price * 100,
-          currency: "USD",
-        },
-      }));
-
-      const response = await squareClient.checkoutApi.createPaymentLink({
-        idempotencyKey: idempotencyKey,
-        order: {
-          locationId: "LFG29KHEV5M51",
-          lineItems: lineItems,
-        },
-        checkoutOptions: {
-          allowTipping: true,
-          redirectUrl: "http://127.0.0.1:3000/success.html",
-        },
-        prePopulatedData: {
-          buyerEmail: customer.email,
-          buyerPhoneNumber: customer.phone,
-        },
-      });
-
-      console.log("Successfully created payment link.");
-      return res.status(200).send({
-        data: {
-          paymentUrl: response.result.paymentLink.url,
-          orderId: response.result.paymentLink.orderId,
-        },
-      });
-    } catch (error) {
-      console.error("Error during function execution:", error);
-      return res.status(500).send({error: {message: "Failed to create payment link."}});
-    }
-  });
-});
-
-exports.sendOrderConfirmationEmail = functions.firestore
-    .document("orders/{orderId}")
-    .onCreate((snap, context) => {
-      const orderData = snap.data();
-
-      const msg = {
-        to: "sean@maykery.com",
-        from: "noreply@yourdomain.com",
-        subject: "New Pre-order Received!",
-        html: `<p>You have a new order from ${orderData.customerName} for pickup on ${orderData.pickupDay}.</p>`,
-      };
-
-      return sgMail.send(msg);
+  try {
+    const response = await squareClient.checkoutApi.createPaymentLink({
+      idempotencyKey: uid + new Date().toISOString(),
+      order: {
+        locationId: "LFG29KHEV5M51", // Add your Square Location ID
+        lineItems: order.items.map(item => ({
+          name: item.name,
+          quantity: item.quantity.toString(),
+          basePriceMoney: {
+            amount: item.price * 100, // Price in cents
+            currency: "USD",
+          },
+        })),
+      },
+      checkoutOptions: {
+        allowTipping: true,
+        redirectUrl: "success.html", // A page on your site for after payment
+      },
+       prePopulatedData: {
+            buyerEmail: customer.email,
+            buyerPhoneNumber: customer.phone,
+       }
     });
+
+    return {
+      paymentUrl: response.result.paymentLink.url,
+      orderId: response.result.paymentLink.orderId
+    };
+  } catch (error) {
+    log("Square API Error:", error);
+    throw new functions.https.HttpsError("internal", "Failed to create payment link.");
+  }
+});
+
+
+// Function to send an email notification when a new order is created
+exports.sendOrderConfirmationEmail = onDocumentCreated("orders/{orderId}", (event) => {
+  const orderData = event.data.data();
+
+  const msg = {
+    to: "sean@maykery.com", // Your email
+    from: "noreply@yourdomain.com", // A verified email with SendGrid
+    subject: "New Pre-order Received!",
+    html: `<p>You have a new order from ${orderData.customerName} for pickup on ${orderData.pickupDay}.</p>`, // Customize as needed
+  };
+
+  log("Sending order confirmation email to:", msg.to);
+  return sgMail.send(msg);
+});
