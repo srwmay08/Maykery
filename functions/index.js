@@ -22,7 +22,7 @@ exports.createPaymentLink = functions.https.onCall(async (data, context) => {
     const response = await squareClient.checkoutApi.createPaymentLink({
       idempotencyKey: context.auth.uid + new Date().toISOString(),
       order: {
-        locationId: "YOUR_SQUARE_LOCATION_ID", // Add your Square Location ID
+        locationId: "LFG29KHEV5M51", // Add your Square Location ID
         lineItems: order.items.map(item => ({
           name: item.name,
           quantity: item.quantity.toString(),
